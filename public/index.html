@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Salesforce Validation Rule Switch</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Salesforce Validation Rule Switch</h1>
+      <p class="subtitle">Log in to any Salesforce org, fetch Account validation rules, toggle states, and deploy updates.</p>
+
+      <div class="card">
+        <div class="row" id="authActions">
+          <button id="loginBtn">Login with Salesforce</button>
+          <button id="logoutBtn" class="secondary" disabled>Log Off</button>
+        </div>
+        <div id="me" class="status"></div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <label for="objectApiName">Object API Name</label>
+          <input id="objectApiName" type="text" value="Account" />
+          <button id="getRulesBtn" disabled>Get Validation Rules</button>
+          <button id="enableAllBtn" class="ok" disabled>Enable All</button>
+          <button id="disableAllBtn" class="bad" disabled>Disable All</button>
+          <button id="deployBtn" disabled>Deploy Changes</button>
+        </div>
+        <div class="status" id="opStatus"></div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Rule Name</th>
+              <th>Object</th>
+              <th>Current State</th>
+              <th>Pending State</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="rulesBody"></tbody>
+        </table>
+        <p class="note">Only validation rules are queried via Salesforce Tooling API.</p>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
