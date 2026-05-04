@@ -28,6 +28,12 @@ const {
   SALESFORCE_API_VERSION = "v61.0"
 } = process.env;
 
+const resolvedFrontendOrigins = FRONTEND_URL.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const resolvedFrontendRedirectUrl =
+  process.env.FRONTEND_REDIRECT_URL?.trim() || resolvedFrontendOrigins[0] || "http://localhost:5173";
+
 const resolvedSalesforceClientId = SALESFORCE_CLIENT_ID || process.env.SF_CLIENT_ID;
 const resolvedSalesforceClientSecret = SALESFORCE_CLIENT_SECRET || process.env.SF_CLIENT_SECRET;
 const resolvedSalesforceRedirectUri =
@@ -41,8 +47,22 @@ function hasRealOAuthConfig() {
   return !values.some((value) => String(value).includes("YOUR_CONNECTED_APP"));
 }
 
+function isAllowedOrigin(origin) {
+  // Allow non-browser requests (no Origin header), and explicit configured origins.
+  if (!origin) return true;
+  return resolvedFrontendOrigins.includes(origin);
+}
+
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error("CORS origin not allowed"));
+    },
+    credentials: true
+  })
+);
 app.use(express.json());
 app.use(
   session({
@@ -101,7 +121,7 @@ app.get("/auth/salesforce", (req, res) => {
       return res.status(500).json({
         error: "Salesforce OAuth is not configured",
         details:
-          "Set real values for SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_CALLBACK_URL in backend/.env (or compatible SF_* names)."
+          "Set real values for SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_REDIRECT_URI in backend/.env (or compatible SF_* names)."
       });
     }
     const oauth2 = new jsforce.OAuth2({
@@ -157,7 +177,7 @@ app.get("/auth/callback", async (req, res) => {
     };
     delete req.session.oauth;
 
-    return res.redirect(`${FRONTEND_URL}/dashboard`);
+    return res.redirect(`${resolvedFrontendRedirectUrl}/dashboard`);
   } catch (error) {
     return res.status(500).json({ error: "Salesforce OAuth callback failed", details: error.message });
   }

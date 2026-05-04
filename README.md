@@ -65,10 +65,11 @@ Create `backend/.env`:
 ```env
 PORT=5000
 FRONTEND_URL=http://localhost:5173
+FRONTEND_REDIRECT_URL=http://localhost:5173
 SESSION_SECRET=replace-with-a-long-random-secret
 SALESFORCE_CLIENT_ID=YOUR_CONNECTED_APP_CONSUMER_KEY
 SALESFORCE_CLIENT_SECRET=YOUR_CONNECTED_APP_CONSUMER_SECRET
-SALESFORCE_CALLBACK_URL=http://localhost:5000/auth/callback
+SALESFORCE_REDIRECT_URI=http://localhost:5000/auth/callback
 SALESFORCE_LOGIN_URL=https://login.salesforce.com
 SALESFORCE_API_VERSION=v61.0
 ```
@@ -135,9 +136,28 @@ npm run dev
 ## Important Notes
 
 - If `/auth/salesforce` returns config error, check `backend/.env` values.
-- Callback URL in Salesforce Connected App must exactly match `SALESFORCE_CALLBACK_URL`.
+- Callback URL in Salesforce Connected App must exactly match `SALESFORCE_REDIRECT_URI`.
 - Backend default local URL: `http://localhost:5000`
 - Frontend default local URL: `http://localhost:5173`
+
+## Deployment (Easy Setup)
+
+1. Deploy backend first (Render/Railway/any Node host):
+- Start command: `npm run start --workspace backend`
+- Required backend env:
+  - `PORT` (platform-provided or 5000)
+  - `FRONTEND_URL` (your deployed frontend URL; can be comma-separated for multiple)
+  - `FRONTEND_REDIRECT_URL` (the main frontend URL to redirect after OAuth)
+  - `SESSION_SECRET`
+  - `SALESFORCE_CLIENT_ID`
+  - `SALESFORCE_CLIENT_SECRET`
+  - `SALESFORCE_REDIRECT_URI` = `https://<your-backend-domain>/auth/callback`
+  - `SALESFORCE_LOGIN_URL=https://login.salesforce.com`
+2. Update Salesforce Connected App callback URL to the same deployed callback:
+- `https://<your-backend-domain>/auth/callback`
+3. Deploy frontend (Vercel/Netlify):
+- Build command: `npm run build --workspace frontend`
+- Frontend env: `VITE_API_BASE_URL=https://<your-backend-domain>`
 
 ## Main API Endpoints
 
