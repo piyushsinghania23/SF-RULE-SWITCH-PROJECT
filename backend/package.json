@@ -8,12 +8,14 @@
     "start": "node src/server.js"
   },
   "dependencies": {
+    "connect-redis": "^8.0.2",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
-    "jsforce": "^1.11.1"
+    "jsforce": "^1.11.1",
+    "redis": "^4.7.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
