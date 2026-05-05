@@ -140,24 +140,63 @@ npm run dev
 - Backend default local URL: `http://localhost:5000`
 - Frontend default local URL: `http://localhost:5173`
 
-## Deployment (Easy Setup)
+## Deployment on Vercel
 
-1. Deploy backend first (Render/Railway/any Node host):
-- Start command: `npm run start --workspace backend`
-- Required backend env:
-  - `PORT` (platform-provided or 5000)
-  - `FRONTEND_URL` (your deployed frontend URL; can be comma-separated for multiple)
-  - `FRONTEND_REDIRECT_URL` (the main frontend URL to redirect after OAuth)
-  - `SESSION_SECRET`
-  - `SALESFORCE_CLIENT_ID`
-  - `SALESFORCE_CLIENT_SECRET`
-  - `SALESFORCE_REDIRECT_URI` = `https://<your-backend-domain>/auth/callback`
-  - `SALESFORCE_LOGIN_URL=https://login.salesforce.com`
-2. Update Salesforce Connected App callback URL to the same deployed callback:
+Deploy this repo as two separate Vercel projects that point to the same Git repository:
+
+1. `sf-rule-switch-backend`
+2. `sf-rule-switch-frontend`
+
+### 1. Backend project on Vercel
+
+- Import the same Git repo into Vercel.
+- Set `Root Directory` to `backend`.
+- Framework preset: `Other`.
+- Install command: `npm install`.
+- Build command: leave empty.
+- Output directory: leave empty.
+
+Add these backend environment variables:
+
+- `FRONTEND_URL=https://<your-frontend-domain>`
+- `FRONTEND_REDIRECT_URL=https://<your-frontend-domain>`
+- `SESSION_SECRET=<long-random-secret>`
+- `REDIS_URL=<your-redis-connection-string>`
+- `SALESFORCE_CLIENT_ID=<your-connected-app-client-id>`
+- `SALESFORCE_CLIENT_SECRET=<your-connected-app-client-secret>`
+- `SALESFORCE_REDIRECT_URI=https://<your-backend-domain>/auth/callback`
+- `SALESFORCE_LOGIN_URL=https://login.salesforce.com`
+- `SALESFORCE_API_VERSION=v61.0`
+
+Notes:
+
+- `REDIS_URL` is strongly recommended for Vercel production deployments because OAuth login state and staged changes rely on a shared session store.
+- `FRONTEND_URL` accepts comma-separated origins and wildcard entries such as `https://your-frontend-*.vercel.app`.
+
+### 2. Frontend project on Vercel
+
+- Import the same Git repo into Vercel again.
+- Set `Root Directory` to `frontend`.
+- Framework preset: `Vite`.
+
+Add this frontend environment variable:
+
+- `VITE_API_BASE_URL=https://<your-backend-domain>`
+
+The included `frontend/vercel.json` rewrite makes React Router deep links such as `/dashboard` work on Vercel.
+
+### 3. Salesforce Connected App
+
+Update the Salesforce Connected App callback URL to:
+
 - `https://<your-backend-domain>/auth/callback`
-3. Deploy frontend (Vercel/Netlify):
-- Build command: `npm run build --workspace frontend`
-- Frontend env: `VITE_API_BASE_URL=https://<your-backend-domain>`
+
+### 4. Recommended deployment order
+
+1. Deploy the backend project.
+2. Copy the backend production URL.
+3. Deploy the frontend project using that backend URL in `VITE_API_BASE_URL`.
+4. Update backend `FRONTEND_URL` and `FRONTEND_REDIRECT_URL` to the final frontend production URL if it changed after first deploy.
 
 ## Main API Endpoints
 

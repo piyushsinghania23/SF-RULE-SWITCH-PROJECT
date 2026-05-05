@@ -20,6 +20,7 @@ const {
   PORT = "5000",
   FRONTEND_URL = "http://localhost:5173",
   SESSION_SECRET,
+  REDIS_URL,
   SALESFORCE_CLIENT_ID,
   SALESFORCE_CLIENT_SECRET,
   SALESFORCE_CALLBACK_URL,
@@ -27,6 +28,9 @@ const {
   SALESFORCE_LOGIN_URL = "https://login.salesforce.com",
   SALESFORCE_API_VERSION = "v61.0"
 } = process.env;
+
+const isProduction = process.env.NODE_ENV === "production";
+const isVercel = process.env.VERCEL === "1";
 
 const resolvedFrontendOrigins = FRONTEND_URL.split(",")
   .map((origin) => origin.trim())
@@ -41,6 +45,18 @@ const resolvedSalesforceRedirectUri =
 const resolvedSalesforceLoginUrl = SALESFORCE_LOGIN_URL || process.env.SF_LOGIN_URL || "https://login.salesforce.com";
 const resolvedSalesforceApiVersion = SALESFORCE_API_VERSION || process.env.SF_API_VERSION || "v61.0";
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesConfiguredOrigin(origin, configuredOrigin) {
+  if (configuredOrigin.includes("*")) {
+    const pattern = `^${escapeRegex(configuredOrigin).replace(/\\\*/g, ".*")}$`;
+    return new RegExp(pattern, "i").test(origin);
+  }
+  return origin === configuredOrigin;
+}
+
 function hasRealOAuthConfig() {
   const values = [resolvedSalesforceClientId, resolvedSalesforceClientSecret, resolvedSalesforceRedirectUri];
   if (values.some((value) => !value)) return false;
@@ -50,9 +66,10 @@ function hasRealOAuthConfig() {
 function isAllowedOrigin(origin) {
   // Allow non-browser requests (no Origin header), and explicit configured origins.
   if (!origin) return true;
-  return resolvedFrontendOrigins.includes(origin);
+  return resolvedFrontendOrigins.some((configuredOrigin) => matchesConfiguredOrigin(origin, configuredOrigin));
 }
 
+app.set("trust proxy", 1);
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(
   cors({
@@ -64,19 +81,35 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(
-  session({
-    secret: SESSION_SECRET || "local-dev-secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: false,
-      maxAge: 1000 * 60 * 60 * 8
-    }
-  })
-);
+
+const sessionOptions = {
+  secret: SESSION_SECRET || "local-dev-secret",
+  resave: false,
+  saveUninitialized: false,
+  name: "sf-rule-switch.sid",
+  cookie: {
+    httpOnly: true,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
+    maxAge: 1000 * 60 * 60 * 8
+  }
+};
+
+if (REDIS_URL) {
+  const [{ RedisStore }, { createClient }] = await Promise.all([import("connect-redis"), import("redis")]);
+  const redisClient = createClient({ url: REDIS_URL });
+  redisClient.on("error", (error) => {
+    console.error("Redis session store error:", error);
+  });
+  await redisClient.connect();
+  sessionOptions.store = new RedisStore({ client: redisClient });
+} else if (isProduction) {
+  console.warn(
+    "REDIS_URL is not set. Production deployments on Vercel should use a shared session store to avoid login/session issues."
+  );
+}
+
+app.use(session(sessionOptions));
 
 function requireAuth(req, res, next) {
   if (!req.session.salesforce?.accessToken) {
@@ -322,16 +355,20 @@ app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-const port = Number(PORT);
-const server = app.listen(port, () => {
-  console.log(`Backend running at http://localhost:${port}`);
-});
+if (!isVercel) {
+  const port = Number(PORT);
+  const server = app.listen(port, () => {
+    console.log(`Backend running at http://localhost:${port}`);
+  });
 
-server.on("error", (error) => {
-  if (error?.code === "EADDRINUSE") {
-    console.error(`Port ${port} is already in use. Stop the existing process or change PORT in backend/.env.`);
+  server.on("error", (error) => {
+    if (error?.code === "EADDRINUSE") {
+      console.error(`Port ${port} is already in use. Stop the existing process or change PORT in backend/.env.`);
+      process.exit(1);
+    }
+    console.error("Backend failed to start:", error);
     process.exit(1);
-  }
-  console.error("Backend failed to start:", error);
-  process.exit(1);
-});
+  });
+}
+
+export default app;
