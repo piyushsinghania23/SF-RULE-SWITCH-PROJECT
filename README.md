@@ -140,6 +140,42 @@ npm run dev
 - Backend default local URL: `http://localhost:5000`
 - Frontend default local URL: `http://localhost:5173`
 
+## Deployment on Render
+
+This repository includes a root `render.yaml` Blueprint that creates:
+
+1. A Node web service for `backend`
+2. A static site for `frontend`
+3. A Render Key Value instance for shared sessions
+
+### 1. Create services from Blueprint
+
+1. Push this repo to GitHub/GitLab.
+2. In Render Dashboard, click **New** -> **Blueprint**.
+3. Select the repository and use the root `render.yaml`.
+4. Complete the `sync: false` prompt for `FRONTEND_URL`.
+5. Complete the `sync: false` prompt for `FRONTEND_REDIRECT_URL`.
+6. Complete the `sync: false` prompt for `SALESFORCE_CLIENT_ID`.
+7. Complete the `sync: false` prompt for `SALESFORCE_CLIENT_SECRET`.
+8. Complete the `sync: false` prompt for `SALESFORCE_REDIRECT_URI`.
+9. Complete the `sync: false` prompt for `VITE_API_BASE_URL`.
+
+### 2. Set cross-service URLs after first deploy
+
+1. Open the deployed backend and frontend services in Render.
+2. Copy their actual `onrender.com` URLs.
+3. Set backend `FRONTEND_URL=https://<your-frontend-domain>`.
+4. Set backend `FRONTEND_REDIRECT_URL=https://<your-frontend-domain>`.
+5. Set backend `SALESFORCE_REDIRECT_URI=https://<your-backend-domain>/auth/callback`.
+6. Set frontend `VITE_API_BASE_URL=https://<your-backend-domain>`.
+7. Trigger redeploy for both services.
+
+### 3. Salesforce Connected App update
+
+1. In Salesforce Connected App, open OAuth settings.
+2. Set callback URL to `https://<your-backend-domain>/auth/callback`.
+3. Save and wait for Salesforce propagation.
+
 ## Deployment on Vercel
 
 Deploy this repo as two separate Vercel projects that point to the same Git repository:
