@@ -105,11 +105,15 @@ if (REDIS_URL) {
   sessionOptions.store = new RedisStore({ client: redisClient });
 } else if (isProduction) {
   console.warn(
-    "REDIS_URL is not set. Production deployments on Vercel should use a shared session store to avoid login/session issues."
+    "REDIS_URL is not set. Production deployments should use a shared session store to avoid login/session issues."
   );
 }
 
 app.use(session(sessionOptions));
+
+app.get("/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
 
 function requireAuth(req, res, next) {
   if (!req.session.salesforce?.accessToken) {
